@@ -1,7 +1,26 @@
 <template>
   <view>
-    <yx-sheet :margin="[32, 30]" :round="3">
+    <yx-sheet :round="3" style="margin: 0px;">
       <u-form :model="form">
+        <!-- 智能识别输入框 -->
+        <u-form-item :border-bottom="false">
+          <yx-input
+            v-model="smartInput"
+            type="textarea"
+            border
+            height="150"
+            placeholder="示例：1998年7月31日14点10分，上海，女，貂蝉"            
+          >
+            <template #icon>
+              <u-icon name="edit-pen-fill"></u-icon>
+            </template>
+          </yx-input>          
+          <u-button                    
+            type="primary" 
+            class="smart-parse-btn"
+            @click="handleSmartParse"
+          >智能<br>识别</u-button>
+        </u-form-item>
 
         <u-form-item :border-bottom="false">
           <yx-input v-model="form.realname" border placeholder="请输入姓名（可空）">
@@ -46,7 +65,15 @@
           </u-radio-group>
         </u-form-item>
 
-        <u-button class="u-m-t-10 u-m-b-10" type="primary" @click="Sumbit">开始排盘</u-button>
+        <u-form-item :border-bottom="false">
+          <yx-input v-model="form.location" border placeholder="请输入出生地点">
+            <template #icon>
+              <u-icon name="map-fill"></u-icon>
+            </template>
+          </yx-input>
+        </u-form-item>
+
+        <u-button class="u-m-t-10 u-m-b-10" type="primary" @click="Sumbit">开始启秘</u-button>
 
       </u-form>
     </yx-sheet>
@@ -100,6 +127,7 @@ const form = reactive({
   defaultTime:"2001-01-01 00:00:00",
   datetimeLabel: null,
   lunarLabel: null,
+  location: "",
 })
 
 const detailStore = useDetailStore();
@@ -112,6 +140,8 @@ const solarDefaultValue = ref("");
 const pillarDefaultValue = ref("");
 
 const pillarPicker = ref()
+
+const smartInput = ref("");
 
 const handleSubSectionChange = index=>{
   form.model = index
@@ -135,6 +165,7 @@ onLoad((e) => {
         form.gender = data.gender === 1 ? 1 : 2;
         form.timestamp = data.timestamp;
         form.sect = data.sect ?? 1;
+        form.location = data.location ?? "";
       } catch (e) {
         deleteLocalStorage("info");
       }
@@ -187,7 +218,6 @@ function PullDatatimeLabel() {
   }
 }
 
-
 async function Sumbit() {
   const datetime = form.timestamp;
   if (datetime === null) {
@@ -201,6 +231,7 @@ async function Sumbit() {
     timestamp: datetime,
     gender: form.gender,
     sect: form.sect,
+    location: form.location,
   }
 
   uni.showLoading({
@@ -224,10 +255,60 @@ async function Sumbit() {
   tendStore.pull(payload);
   toDetail()
 }
+
+const handleSmartParse = () => {
+  const input = smartInput.value;
+  if (!input) {
+    uni.$u.toast('请输入信息');
+    return;
+  }
+
+  // 解析年月日时分
+  const datePattern = /(\d{4})年(\d{1,2})月(\d{1,2})日(\d{1,2})点(\d{1,2})分/;
+  const dateMatch = input.match(datePattern);
+  
+  if (dateMatch) {
+    const [_, year, month, day, hour, minute] = dateMatch;
+    const time = `${year}/${month}/${day} ${hour}:${minute}`;
+    form.timestamp = new Date(time).getTime();
+    form.defaultTime = uni.$u.date(form.timestamp, "yyyy-mm-dd hh:MM:ss");
+  }
+
+  // 解析地点 (在性别之前)
+  const locationPattern = /，([^，]+)，[男女]/;
+  const locationMatch = input.match(locationPattern);
+  if (locationMatch) {
+    form.location = locationMatch[1].trim();
+  }
+
+  // 解析性别
+  if (input.includes('女')) {
+    form.gender = 2;
+  } else if (input.includes('男')) {
+    form.gender = 1;
+  }
+
+  // 解析姓名
+  const nameMatch = input.match(/[，,]([^，,]+)$/);
+  if (nameMatch) {
+    form.realname = nameMatch[1].trim();
+  }
+
+  uni.$u.toast('识别完成');
+};
 </script>
 
 <style scoped>
 .u-form-item {
   padding: 0.375rem 0;
+}
+
+.smart-parse-btn {
+  margin-top: 16px;
+  margin-left: 8px;
+  width: fit-content;
+  line-height: 1.2;
+  font-size: small;
+  /* border-radius: 0; */
 }
 </style>

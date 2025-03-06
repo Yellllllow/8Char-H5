@@ -5,9 +5,9 @@
     <view class="u-m-t-20">
       <pro-decl></pro-decl>
     </view>
-    <view class="u-p-y-20">
+    <!-- <view class="u-p-y-20">
       <yx-coding title="流运神煞"></yx-coding>
-    </view>
+    </view> -->
   </view>
 </template>
 
