@@ -12,7 +12,7 @@
           style="border-radius: unset;"
       ></u-subsection>
     </view>
-    <scroll-view scroll-y class="u-abso" :style="{
+    <scroll-view id="tabDetail" scroll-y class="u-abso" :style="{
       top:headerHeight + 'px',
       width:'100%',
       height:contentHeight,
@@ -57,10 +57,50 @@ onMounted(() => {
   ComputedScrollHeight();
 });
 
-const ComputedScrollHeight = () => {
-  uni.$u.getRect('#header').then(data => {
-    headerHeight.value = data.height;
-    nextTick();
-  })
+const ComputedScrollHeight = async () => {
+  const data = await uni.$u.getRect('#header');
+  headerHeight.value = data.height;
+  await nextTick();
+  // #ifdef H5
+  sendHeightToParent();
+  // #endif
 };
+
+// 发送高度到父页面的函数
+const sendHeightToParent = () => {
+  let height = 0;
+  if(tabDetail.clientHeight<=0)
+    height = 924;
+  else 
+    height = tabDetail.clientHeight + headerHeight.value;
+  if (window.parent) {
+    window.parent.postMessage({ type: 'setHeight', height }, '*');
+  }
+};
+
+// 监听DOM变化以更新高度
+const observeHeight = () => {
+  const observer = new MutationObserver(() => {
+    nextTick(() => {
+      sendHeightToParent();
+      return;
+    });
+  });
+  
+  observer.observe(document.body, {
+    attributes: true,
+    childList: true,
+    subtree: true
+  });
+};
+
+onMounted(() => {
+  // #ifdef H5
+  // 监听DOM变化
+  observeHeight();
+  
+  // 监听窗口大小变化
+  window.addEventListener('resize', sendHeightToParent);
+  // #endif
+});
 </script>
